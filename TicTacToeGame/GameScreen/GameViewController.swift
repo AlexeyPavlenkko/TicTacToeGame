@@ -15,6 +15,10 @@ enum Choice: String {
     case cross, circle
 }
 
+enum ChoicePlayer {
+    case player, computer
+}
+
 class GameViewController: UIViewController {
 
     //MARK: - Outlets & Subviews
@@ -89,11 +93,16 @@ class GameViewController: UIViewController {
         makeChoice(selectedBoxImageView)
         playerChoices.append(Box(rawValue: sender.name!)!)
         let isFinished = checkGameStatus()
-        guard !isFinished else { return }
+        if isFinished {
+            resetGame(lastChoicePlayer: .player)
+        }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.computerMakeChoice()
-            let _ = self.checkGameStatus()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.computerMakeChoice()
+            let isFinished = self?.checkGameStatus()
+            if isFinished ?? false {
+                self?.resetGame(lastChoicePlayer: .computer)
+            }
         }
     }
     
@@ -179,35 +188,40 @@ class GameViewController: UIViewController {
             
             if userMatchesCount == combination.count {
                 playerCountLabel.text = String(((Int(playerCountLabel.text ?? "0")) ?? 0) + 1)
-                resetGame()
                 showSnackbar(with: "🥳 \(playerName ?? "") " + "won!".localized())
                 return true
             } else if computerMatchesCount == combination.count {
                 computerCountLabel.text = String(((Int(computerCountLabel.text ?? "0")) ?? 0) + 1)
-                resetGame()
                 showSnackbar(with: "🤖 " + "Computer won!".localized())
                 return true
-            } else if computerChoices.count + playerChoices.count == 9 {
-                resetGame()
-                showSnackbar(with: "🥶 " + "Draw!".localized())
-                return true
             }
+        }
+        
+        if computerChoices.count + playerChoices.count == 9 {
+            showSnackbar(with: "🥶 " + "Draw!".localized())
+            return true
         }
         
         return false
     }
     
-    private func resetGame() {
+    private func resetGame(lastChoicePlayer: ChoicePlayer) {
         for box in Box.allCases {
             let boxImageView = getBoxImageView(from: box.rawValue)
             boxImageView.image = nil
             boxImageView.isUserInteractionEnabled = true
         }
         lastChoice = lastChoice == .cross ? .circle : .cross
-        playerChoiceLabel.text = lastChoice == .cross ? "(O)" : "(X)"
-        computerChoiceLabel.text = lastChoice == .cross ? "(X)" : "(O)"
         playerChoices = []
         computerChoices = []
+        switch lastChoicePlayer {
+        case .player:
+            playerChoiceLabel.text = lastChoice == .cross ? "(X)" : "(O)"
+            computerChoiceLabel.text = lastChoice == .cross ? "(O)" : "(X)"
+        case .computer:
+            playerChoiceLabel.text = lastChoice == .cross ? "(O)" : "(X)"
+            computerChoiceLabel.text = lastChoice == .cross ? "(X)" : "(O)"
+        }
     }
     
 }
